@@ -1,0 +1,15 @@
+#define I2Cport S1       // Port number
+#define I2CAddr8574 0x70 // I2C address x040 8574 or 0x70 for 8574A
+byte WriteBuf[]={I2CAddr8574,0x00}; // write buffer is addr and data
+
+task main() {
+  int nbytes;
+  SetSensorLowspeed (I2Cport);       // Configure I2C port
+  while (true) {
+    WriteBuf[1]++;                   // update data byte
+    I2CWrite(I2Cport, 0, WriteBuf);  // send buffer
+    while(I2CStatus(I2Cport, nbytes)==STAT_COMM_PENDING); // wait
+  }
+}
+
+

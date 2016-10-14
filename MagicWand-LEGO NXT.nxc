@@ -1,0 +1,84 @@
+#define I2Cport S1
+#define Touch S4
+#define Motor OUT_A
+// I2CAddr8574 = 0x40 for PCF8574
+// I2CAddr8574 = 0x70 for PCF8574A
+#define I2CAddr8574 0x70
+
+
+// Display patterns
+// Each byte represents a column of dots
+// Bit set to 1 means lit LED.
+// Least significant bit is at top of column.
+// Last byte must be all 0
+// Maximum number of bytes par pattern: 15
+
+byte L_[] = {0xff, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0};
+byte E_[] = {0xff, 0x89, 0x89, 0x89, 0x89, 0x81, 0x81, 0};
+byte G_[] = {0x7e, 0x00, 0x81, 0x81, 0x81, 0x81, 0x91, 0x90, 0x72, 0};
+byte O_[] = {0x7e, 0x00, 0x81, 0x81, 0x81, 0x81, 0x81, 0x00, 0x7e, 0};
+
+byte N_[] = {0xff, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0xff, 0};
+byte X_[] = {0x80, 0x41, 0x22, 0x14, 0x08, 0x14, 0x22, 0x41, 0x80, 0};
+byte T_[] = {0x01, 0x01, 0x01, 0x01, 0xff, 0x01, 0x01, 0x01, 0x01, 0};
+
+
+
+void WaitTouch(void)
+{
+  // Wait for pressed
+  while(Sensor(Touch)==0);
+  // and release
+  while(Sensor(Touch)==1);
+  return;
+}
+
+void DispLetter (const byte & letter[])
+{
+  int nbytes;
+  // Wait for the end of previously sent data
+  while(I2CStatus(I2Cport, nbytes)==STAT_COMM_PENDING);
+  // Write buffer to send to PCF8574
+  byte WriteBuf[];
+  ArrayBuild(WriteBuf, I2CAddr8574, letter);
+  for(int i=1; i<ArrayLen(WriteBuf); i++)
+  {
+     WriteBuf[i] ^= 0xff;
+  }
+  I2CWrite(I2Cport, 0,  WriteBuf);
+}
+
+task main ()
+{
+  // Configure NXT I2C port
+  SetSensorLowspeed (I2Cport);
+  // Configure Touch sensor
+  SetSensorTouch (Touch);
+  // Start Motor, full power
+  OnFwd(Motor, 100);
+  while (true)
+  {
+    // display LEGO during 5 sweeps
+    for (int i=0; i<5; i++)
+    {
+      WaitTouch();
+      // wait a little to center display in linear part of sweep
+      Wait(20);
+      DispLetter(L_);
+      DispLetter(E_);
+      DispLetter(G_);
+      DispLetter(O_);
+    }
+    // Display NXT
+    for (int i=0; i<5; i++)
+    {
+      WaitTouch();
+      Wait(20);
+      DispLetter(N_);
+      DispLetter(X_);
+      DispLetter(T_);
+    }
+  }
+}
+
+

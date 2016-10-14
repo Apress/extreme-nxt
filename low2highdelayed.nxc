@@ -1,0 +1,45 @@
+#define I2Cport S1
+// I2CAddr8574 = 0x40 for PCF8574
+// I2CAddr8574 = 0x70 for PCF8574A
+#define I2CAddr8574 0x40
+
+// Write buffer to send to PCF8574
+byte WriteBuf[] = {I2CAddr8574, 0xFF};
+
+// Read buffer thet receives byte read from PCF8574
+byte ReadBuf[];
+
+#define DelayLength 100
+byte DelayBuffer[];
+int BufferInPtr=0;
+int BufferOutPtr=1;
+
+
+// Number of bytes to read
+int RdCnt=1;
+
+task main ()
+{
+  // Configure NXT port
+  SetSensorLowspeed (I2Cport);
+  
+  // Initialize buffer
+  ArrayInit(DelayBuffer, 0xff, DelayLength);
+  
+  while (true)
+  {
+    // Write new data to PCF8574, and read button status
+    WriteBuf[1]= DelayBuffer[BufferOutPtr];
+    I2CBytes(I2Cport, WriteBuf, RdCnt, ReadBuf);
+    // Transfer the low half byte (buttons)
+    // to high half byte (LEDs). Set Low byte to all 1s
+    // to be able to read the buttons.
+    DelayBuffer[BufferInPtr] = (ReadBuf[0] << 4) + 0x0f;
+    BufferOutPtr++;
+    if(BufferOutPtr >= DelayLength) BufferOutPtr = 0;
+    BufferInPtr++;
+    if(BufferInPtr >= DelayLength) BufferInPtr = 0;
+  }
+}
+
+

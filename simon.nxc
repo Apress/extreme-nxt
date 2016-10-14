@@ -1,0 +1,131 @@
+#define MaxNotes 50
+#define ToneDuration 300
+#define IntervalDuration 100
+
+#define I2Cport S1
+// I2CAddr8574 = 0x40 for PCF8574
+// I2CAddr8574 = 0x70 for PCF8574A
+#define I2CAddr8574 0x40
+
+// Write buffer to send to PCF8574
+byte WriteBuf[] = {I2CAddr8574, 0xFF};
+
+// Read buffer thet receives byte read from PCF8574
+byte ReadBuf[];
+
+// Number of bytes to read
+int RdCnt=1;
+
+// Notes buffer
+int notes[];
+
+byte LedVal[] = {0xef, 0xdf, 0xbf, 0x7f};
+int Tone[] = {TONE_C4, TONE_E4, TONE_G4, TONE_C5};
+
+//*******************************************
+// Plays a tone and light matching LED.
+// LED are on higer half of PCF8574 data byte
+// Parameter is LED number (0..3)
+void LedTone( int Led)
+{
+   if(Led < 0 || Led > 3 ) return;
+   WriteBuf[1] = LedVal[Led];
+   I2CWrite(I2Cport, 0, WriteBuf);
+   PlayTone (Tone[Led], ToneDuration);
+   Wait(ToneDuration);
+   WriteBuf[1] = 0xff;
+   I2CWrite(I2Cport, 0, WriteBuf);
+   Wait(IntervalDuration);
+}
+
+//*******************************************
+// Read the I2C button state and returns button number
+// The buttons are on lower half of PCF8574 data byte
+// Rightmost button have priority.
+int GetButtons()
+{
+  WriteBuf[1] = 0xff;
+  do
+  {
+    I2CBytes(I2Cport, WriteBuf, RdCnt, ReadBuf);
+  }
+  while (ReadBuf[0] == 0xff)
+  for(int i=0; i<4; i++)
+  {
+    if((ReadBuf[0] & 1) == 0) return i;
+    ReadBuf[0]>>=1;
+  }
+}
+
+task main ()
+{
+  int i;
+  // Configure NXT port
+  SetSensorLowspeed (I2Cport);
+  TextOut(8, LCD_LINE3, "NXT Simon");
+  TextOut(8, LCD_LINE4, "Press orange");
+  TextOut(8, LCD_LINE5, "button to start");
+
+  // Wait for orange button and seed random generator
+  do
+  {
+    Random();
+  }
+  while (! ButtonPressed (BTNCENTER, true))
+  TextOut(8, LCD_LINE4, "            ");
+  TextOut(8, LCD_LINE5, "               ");
+  Wait(1000);
+
+  // Initialise notes buffer, without repetition
+  ArrayInit(notes, 0, MaxNotes);
+  int Val=Random(4);
+  notes[0]=Val;
+  for(i=1; i < MaxNotes; i++)
+  {
+    do
+    {
+      Val=Random(4);
+    } while (Val == notes[i-1]);
+    notes[i] = Val;
+  }
+
+  for(i=1; i < MaxNotes; i++)
+  {
+    // Play tune
+    int fail=false;
+    for(int j=0; j<i; j++)
+    {
+      LedTone(notes[j]);
+    }
+    
+    // Check if players correctly reproduce melody
+    for(int j=0; j<i; j++)
+    {
+      int button=GetButtons();
+      LedTone(button);
+      if(button != notes[j])
+      {
+        fail=true;
+        break;
+      }
+    }
+    Wait(1000);
+    if(fail) break;
+  }
+  ClearScreen();
+  TextOut(10, LCD_LINE3, "Game Over!");
+  TextOut(10, LCD_LINE4, "Level Reached");
+  NumOut(10, LCD_LINE5, i);
+  PlayTone(TONE_C6, 100);
+  Wait (100);
+  PlayTone(TONE_G5, 120);
+  Wait (120);
+  PlayTone(TONE_E5, 150);
+  Wait (150);
+  PlayTone(TONE_C5, 170);
+  Wait (170);
+  PlayTone(TONE_G4, 200);
+  Wait (5000);
+}
+
+

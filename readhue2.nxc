@@ -1,0 +1,97 @@
+#define I2Cport S1
+// I2CAddr8574 = 0x40 for PCF8574
+// I2CAddr8574 = 0x70 for PCF8574A
+#define I2CAddr8574 0x40
+#define BLUE 1
+#define RED 4
+#define GREEN 0x10
+
+// Write buffer to send to PCF8574
+byte WriteBuf[] = {I2CAddr8574, 0xFF};
+
+struct rgb
+{
+  int Red;
+  int Green;
+  int Blue;
+};
+
+void ReadRawColor(int port, rgb &RawRGB )
+{
+  SetSensorLowspeed (port);
+  WriteBuf[1] = RED ^ 0xff;
+  I2CWrite(port, 0,  WriteBuf);
+  Wait(20);
+  SetSensorTouch (port);
+  Wait(80);
+  RawRGB.Red = 1024 - SensorRaw (port);
+
+  SetSensorLowspeed (port);
+  WriteBuf[1] = GREEN ^ 0xff;
+  I2CWrite(port, 0,  WriteBuf);
+  Wait(20);
+  SetSensorTouch (port);
+  Wait(80);
+  RawRGB.Green = 1024 - SensorRaw (port);
+
+  SetSensorLowspeed (port);
+  WriteBuf[1] = BLUE ^ 0xff;
+  I2CWrite(port, 0,  WriteBuf);
+  Wait(20);
+  SetSensorTouch (port);
+  Wait(80);
+  RawRGB.Blue = 1024 - SensorRaw (port);
+}
+
+int Raw2Hue(rgb &RawRGB)
+{
+  int max, min;
+  int d;
+  rgb normalized;
+  int hue;
+  
+  //find the color with max intensity
+  max = (RawRGB.Red > RawRGB.Green) ? RawRGB.Red : RawRGB.Green;
+  if(RawRGB.Blue > max ) max = RawRGB.Blue;
+  //find the color with min intensity
+  min = (RawRGB.Red < RawRGB.Green) ? RawRGB.Red : RawRGB.Green;
+  if(RawRGB.Blue < min ) min = RawRGB.Blue;
+  //diff of max and min also scale
+  d = (max-min)/60;
+  //normalize color intensity
+  normalized.Red = (max - RawRGB.Red)/d;
+  normalized.Green = (max - RawRGB.Green)/d;
+  normalized.Blue = (max - RawRGB.Blue)/d;
+  //compute hue based on max color
+  if(RawRGB.Blue == max) hue = 240 + normalized.Green - normalized.Red;
+  if(RawRGB.Green == max) hue = 240 + normalized.Red - normalized.Blue;
+  if(RawRGB.Red == max) hue = normalized.Blue - normalized.Green;
+  if(hue < 0) hue = hue + 360;
+  return hue;
+}
+
+task main ()
+{
+  // Configure NXT port
+
+
+  rgb RawRGB;
+  int hue;
+
+  while (true)
+  {
+    ReadRawColor(I2Cport, RawRGB);
+    hue = Raw2Hue(RawRGB);
+    ClearScreen();
+    TextOut (0, LCD_LINE2, "Red:  ");
+    NumOut (36, LCD_LINE2, RawRGB.Red);
+    TextOut (0, LCD_LINE3, "Green:");
+    NumOut (36, LCD_LINE3, RawRGB.Green);
+    TextOut (0, LCD_LINE4, "Blue: ");
+    NumOut (36, LCD_LINE4, RawRGB.Blue);
+    TextOut (0, LCD_LINE5, "Hue:  ");
+    NumOut (36, LCD_LINE5, hue);
+  }
+}
+
+

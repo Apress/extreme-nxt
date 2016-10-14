@@ -1,0 +1,17 @@
+#define port S1                        // sensor port 1
+#define I2CAddr8591 0x90               // PCF8591 address
+byte WriteBuf[] = {I2CAddr8591, 0x04}; // write buffer
+byte ReadBuf[];                        // read buffer
+int RdCnt=5;                           // read 5 bytes
+
+task main(){
+  SetSensorLowspeed(port);             // make port I2C
+  while(true){
+    // Write config byte and read back 5 bytes
+    I2CBytes(port, WriteBuf, RdCnt, ReadBuf);
+    NumOut(0,24,ReadBuf[1],true);     // Chan 0
+    NumOut(0,16,ReadBuf[2]);          // Chan 1
+    NumOut(0,8,ReadBuf[3]);           // Chan 2
+    NumOut(0,0,ReadBuf[4]);           // Chan 3
+  }
+}

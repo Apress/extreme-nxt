@@ -1,0 +1,17 @@
+#define I2Cport S1 // NXT sensor port 1
+#define I2CAddr8574 0x40 // 0x40 8574 or 0x70 for 8574A
+byte WriteBuf[] = {I2CAddr8574, 0xFF}; // Sent to 8574
+byte ReadBuf[];   // Receive from PCF8574
+int RdCnt=1;      // Number of bytes to read
+
+task main (){
+  SetSensorLowspeed (I2Cport); // Configure NXT port
+  while (true){
+    // write output data and read back port value
+    I2CBytes(I2Cport, WriteBuf, RdCnt, ReadBuf);
+    // shift left 4 bits and make lowest 4 bits 1
+    WriteBuf[1] = (ReadBuf[0] << 4) + 0x0f;
+  }
+}
+
+

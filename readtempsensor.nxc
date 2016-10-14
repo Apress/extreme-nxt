@@ -1,0 +1,14 @@
+#define port S3                    // sensor port 3
+#define I2CAddr 0x98               // address
+byte WriteBuf[] = {I2CAddr, 0x00}; // write buffer
+byte ReadBuf[];                    // read buffer
+int RdCnt=2;                       // read 2 bytes
+
+task main(){
+  SetSensorLowspeed(port);         // make port I2C
+  while(true){
+    I2CBytes(port, WriteBuf, RdCnt, ReadBuf);
+    NumOut(0,24,ReadBuf[0],true);     // Byte 1
+  //  NumOut(0,16,ReadBuf[1]);          // Byte 2
+  }
+}

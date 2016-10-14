@@ -1,0 +1,74 @@
+#define I2Cport S4       // keypad connected to port 4
+#define I2CAddr8574 0x70 // 0x40 for 8574 or 0x70 for 8574A
+byte WriteBuf[] = {I2CAddr8574, 0x00}; // write buffer
+byte ReadBuf[]; // read buffer
+int RdCnt=1; // read one byte
+
+long GetKey() {// returns the key value or -1 if no key
+  WriteBuf[1]=0xEF; // Col 1
+  I2CBytes(I2Cport, WriteBuf, RdCnt, ReadBuf);
+  if(ReadBuf[0]==0xEE) return(1); // Row 1
+  if(ReadBuf[0]==0xED) return(4); // Row 2
+  if(ReadBuf[0]==0xEB) return(7); // Row 3
+  if(ReadBuf[0]==0xE7) return(14);// Row 4
+  WriteBuf[1]=0xDF; // Col 2
+  I2CBytes(I2Cport, WriteBuf, RdCnt, ReadBuf);
+  if(ReadBuf[0]==0xDE) return(2); // Row 1
+  if(ReadBuf[0]==0xDD) return(5); // Row 2
+  if(ReadBuf[0]==0xDB) return(8); // Row 3
+  if(ReadBuf[0]==0xD7) return(0); // Row 4
+  WriteBuf[1]=0xBF; // Col 3
+  I2CBytes(I2Cport, WriteBuf, RdCnt, ReadBuf);
+  if(ReadBuf[0]==0xBE) return(3); // Row 1
+  if(ReadBuf[0]==0xBD) return(6); // Row 2
+  if(ReadBuf[0]==0xBB) return(9); // Row 3
+  if(ReadBuf[0]==0xB7) return(15);// Row 4
+  WriteBuf[1]=0x7F; // Col 4
+  I2CBytes(I2Cport, WriteBuf, RdCnt, ReadBuf);
+  if(ReadBuf[0]==0x7E) return(10); // Row 1
+  if(ReadBuf[0]==0x7D) return(11); // Row 2
+  if(ReadBuf[0]==0x7B) return(12); // Row 3
+  if(ReadBuf[0]==0x77) return(13); // Row 4
+  return(-1); // no keys pressed
+}
+
+task main () {
+  long Value = 0, Key;
+  string TextValue, FileName="X.TXT";
+  char FileHandle, Count;
+  SetSensorLowspeed (I2Cport);  // config I2C Port
+  NumOut(0,0,Value,true); // show inital value
+  while (true) { // loop forever
+    while(GetKey()<0); // wait for key to be pressed
+    Key=GetKey();  // get key value
+    PlayTone(1000,5); // make key pressed sound
+    switch(Key) {  // case based on key value
+      case -1:  // no key = do nothing
+      break;
+      case 15:  // # = negate value
+        Value = -Value;
+      break;
+      case 14:  // * = clear value
+        Value = 0;
+      break;
+      case 13: // 10-13 write value to file and quit
+      case 12:
+      case 11:
+      case 10:
+        FileName[0] = Key + 55; // fix name to A, B, C, or D
+        DeleteFile(FileName); // delete any old file
+        CreateFile(FileName,16,FileHandle); // open file
+        TextValue=NumToStr(Value); // convert value to string
+        WriteLnString(FileHandle,TextValue,Count);// write it
+        CloseFile(FileHandle); // close file
+        Stop(true); // done
+      break;
+      default: // 0-9 = just build up value
+        if(Value>=0) Value=Value*10+Key;
+        else Value=Value*10-Key;
+      break;
+    }
+    NumOut(0,0,Value,true); // show current value
+    while(GetKey()>=0); // wait for key to be unpressed
+  }
+}

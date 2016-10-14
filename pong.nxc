@@ -1,0 +1,66 @@
+#define port S1                        // sensor port 1
+#define I2CAddr8591 0x90               // PCF8591 address
+byte WriteBuf[] = {I2CAddr8591, 0x04}; // write buffer
+byte ReadBuf[];                        // read buffer
+int RdCnt=5;                           // read 5 bytes
+
+task main(){
+  byte lpadx,lpady,rpadx,rpady,bx,by,bxv,byv,lscore,rscore;
+  lpadx=5;
+  lpady=0;
+  rpadx=95;
+  rpady=0;
+  lscore=0;
+  rscore=0;
+  bx=6;
+  by=30;
+  bxv=1;
+  byv=1;
+  SetSensorLowspeed(port);           // make port I2C
+  while(true){
+    I2CBytes(port, WriteBuf, RdCnt, ReadBuf);
+    NumOut(78,60,rscore);
+    NumOut(20,60,lscore);
+    GraphicOut(lpadx, lpady, "N.ric");
+    lpady=ReadBuf[3]/4;
+    GraphicOut(lpadx, lpady, "P.ric");
+    GraphicOut(rpadx, rpady, "N.ric");
+    rpady=ReadBuf[4]/4;
+    GraphicOut(rpadx, rpady, "P.ric");
+    GraphicOut(bx, by, "W.ric");
+    bx=bx+bxv;
+    by=by+byv;
+    GraphicOut(bx, by, "B.ric");
+    if (bx>94){
+      GraphicOut(bx, by, "W.ric");
+      lscore=lscore+1;
+      bx=6;
+      by=30;
+      PlayTone(100,500);
+      Wait(500);
+    }
+    if (bx<3){
+      GraphicOut(bx, by, "W.ric");
+      rscore=rscore+1;
+      bx=94;
+      by=30;
+      PlayTone(100,500);
+      Wait(500);
+    }
+    if (by>60) byv=-1;
+    if (by<1) byv=1;
+    if (bx==5){
+      if(abs(lpady+6-by)<10){
+        bxv=1;
+        PlayTone(600,50);
+      }
+    }
+    if (bx==93){
+      if(abs(rpady+6-by)<10){
+        bxv=-1;
+        PlayTone(600,50);
+      }
+    }
+    Wait(10);
+  }
+}
